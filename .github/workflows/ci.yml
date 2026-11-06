@@ -1,0 +1,103 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Test (py${{ matrix.python-version }}, ${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14", "3.15"]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ matrix.python-version }}"
+          allow-prereleases: true
+
+      - name: Install package and test dependencies
+        run: pip install . pytest pytest-cov
+
+      - name: Run tests (fails below 100% coverage)
+        run: python -m pytest --cov --cov-report=term-missing
+
+      - name: Smoke-test the installed command
+        shell: bash
+        run: |
+          check-sshole --version
+          check-sshole tests/fixtures/safe.Dockerfile
+          if check-sshole tests/fixtures/vulnerable.Dockerfile; then
+            echo "::error::check-sshole passed tests/fixtures/vulnerable.Dockerfile"
+            exit 1
+          fi
+
+  action:
+    name: GitHub Action (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Safe Dockerfile passes
+        uses: ./  # zizmor: ignore[self-repository] test the action as checked out
+        with:
+          path: tests/fixtures/safe.Dockerfile
+
+      - name: Vulnerable Dockerfile fails
+        id: vulnerable
+        continue-on-error: true
+        uses: ./  # zizmor: ignore[self-repository] test the action as checked out
+        with:
+          path: tests/fixtures/vulnerable.Dockerfile
+          format: text  # no annotation on every CI run
+
+      - name: Check that the vulnerable Dockerfile failed
+        if: steps.vulnerable.outcome != 'failure'
+        shell: bash
+        run: |
+          echo "::error::the action passed tests/fixtures/vulnerable.Dockerfile"
+          exit 1
+
+  pre-commit:
+    name: pre-commit hook
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.x"
+
+      - name: Install pre-commit
+        run: pip install pre-commit
+
+      - name: Run the hook from this checkout
+        run: |
+          pre-commit try-repo . check-sshole --files tests/fixtures/safe.Dockerfile
+          if pre-commit try-repo . check-sshole --files tests/fixtures/vulnerable.Dockerfile; then
+            echo "::error::the hook passed tests/fixtures/vulnerable.Dockerfile"
+            exit 1
+          fi

@@ -1,0 +1,43 @@
+name: check-sshole
+description: Find Dockerfiles that ship an sshd exposed to *sshole (CVE-2026-123158)
+author: Xianpeng Shen
+branding:
+  icon: shield
+  color: red
+
+inputs:
+  path:
+    description: Dockerfiles or folders to scan, separated by spaces.
+    required: false
+    default: .
+  format:
+    description: "Output: github (annotations and a job summary), text or json."
+    required: false
+    default: github
+
+runs:
+  using: composite
+  steps:
+    - name: Run check-sshole
+      shell: bash
+      env:
+        CHECK_SSHOLE_PATH: ${{ inputs.path }}
+        CHECK_SSHOLE_FORMAT: ${{ inputs.format }}
+        # The check only needs the standard library, so it runs straight from
+        # the action's own files: nothing is installed.
+        PYTHONPATH: ${{ github.action_path }}/src
+      run: |
+        python=
+        for candidate in python3 python; do
+          if "$candidate" -c 'import sys; sys.exit(sys.version_info < (3, 9))' >/dev/null 2>&1; then
+            python=$candidate
+            break
+          fi
+        done
+        if [ -z "$python" ]; then
+          echo "::error::check-sshole needs Python 3.9 or newer on the runner (add actions/setup-python first)"
+          exit 2
+        fi
+        set -f  # split the path list on spaces, but don't expand globs
+        # shellcheck disable=SC2086
+        "$python" -m check_sshole --format "$CHECK_SSHOLE_FORMAT" $CHECK_SSHOLE_PATH

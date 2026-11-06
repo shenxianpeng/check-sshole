@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=77", "setuptools-scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "check-sshole"
+dynamic = ["version"]
+description = "Find Dockerfiles that ship an sshd exposed to *sshole (CVE-2026-123158)"
+readme = "README.md"
+license = "MIT"
+authors = [{ name = "Xianpeng Shen", email = "xianpeng.shen@gmail.com" }]
+requires-python = ">=3.9"
+keywords = ["sshole", "CVE-2026-123158", "openssh", "sshd", "dockerfile", "alpine", "musl", "pre-commit", "security"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Console",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Topic :: Security",
+    "Topic :: Software Development :: Quality Assurance",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Programming Language :: Python :: 3.15",
+    "Programming Language :: Python :: Implementation :: CPython",
+    "Programming Language :: Python :: Implementation :: PyPy",
+]
+
+[project.optional-dependencies]
+test = ["pytest", "pytest-cov"]
+
+[project.scripts]
+check-sshole = "check_sshole.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/shenxianpeng/check-sshole"
+Issues = "https://github.com/shenxianpeng/check-sshole/issues"
+"About *sshole" = "https://sshhole.com/"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools_scm]
+# The version comes from the release tag (v0.1.0 -> 0.1.0); the publish
+# workflow pins it with SETUPTOOLS_SCM_PRETEND_VERSION. fallback_version lets
+# a source tree without git metadata build instead of failing.
+fallback_version = "0.0.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+
+[tool.coverage.run]
+source = ["check_sshole"]
+branch = true
+
+[tool.coverage.report]
+fail_under = 100
+show_missing = true

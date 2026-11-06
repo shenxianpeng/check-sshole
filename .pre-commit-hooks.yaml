@@ -1,0 +1,6 @@
+- id: check-sshole
+  name: check-sshole (*sshole, CVE-2026-123158)
+  description: Flags Dockerfiles that install sshd on Alpine/musl with password logins on.
+  entry: check-sshole
+  language: python
+  types: [dockerfile]
